@@ -5,6 +5,12 @@ use warnings ;
 
 use DBI ;
 
+use Getopt::Long ;
+
+my $detailed = 0 ;
+
+GetOptions( 'detailed' => \$detailed ) ;
+
 
 #####
 ## This is a rough beta
@@ -67,11 +73,38 @@ my $ip_switchers_h = $dbh->prepare( $ip_switchers_q ) ;
 
 $ip_switchers_h->execute() ;
 
+my %targetedIDs = () ;
+
 
 print "\nSession\tCount\n" ;
 while(my $row = $ip_switchers_h->fetchrow_hashref() ) {
-    use Data::Dumper ;
+    #use Data::Dumper ;
     print $row->{session} . "\t" . $row->{count_ips} . "\n" ;
+
+    $targetedIDs{ $row->{session} } = 1 ;
+}
+
+if( $detailed ) {
+
+    my $get_ips_q =<<"EOQ";
+select distinct ip
+from session_ips
+where session = ?
+order by ip
+EOQ
+
+    my $get_ips_h = $dbh->prepare( $get_ips_q ) ;
+    
+    foreach my $targetedID ( keys( %targetedIDs ) ) {
+        print "\n\n === eduPersonTargetedID $targetedID ips ===  \n\n"  ;
+
+        
+        $get_ips_h->execute( $targetedID ) ;
+        while( my $ip_row = $get_ips_h->fetchrow_hashref() ) {
+            print $ip_row->{ip} . "\n" ;
+        }
+        print "\n\n === end of eduPersonTargetedID $targetedID ips ===  \n\n" 
+    }
 }
 
 
