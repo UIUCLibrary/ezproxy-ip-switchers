@@ -158,7 +158,7 @@ sub kill_and_block {
         # need to add log4per
         my $log_path = 'blocks.log' ;
         print $log_fh  strftime("%Y-%m-%d %H:%M:%S", localtime(time))
-                      . " adding blocks " .  join(q{,},@new_sentenced) ;
+                      . " adding blocks " .  join(q{,},@new_sentenced) . "\n" ;
         
         
         $shib_block->addBlocks( @new_sentenced ) ;
