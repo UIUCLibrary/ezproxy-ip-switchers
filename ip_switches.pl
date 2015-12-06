@@ -5,10 +5,11 @@ use warnings ;
 
 use DBI ;
 
-use Text::Template ;
-use File::Copy ;
+use POSIX;
 
 use Getopt::Long ;
+
+use ShibBlock ;
 
 my $detailed = 0 ;
 my $killmode = 0 ;
@@ -33,7 +34,9 @@ GetOptions( 'detailed' => \$detailed,
 # does this need to be here? or can we just moved it down a level
 my @blocked_list ;
 if( $killmode) {
-    @blocked_list = getBlocked() ;
+
+    my $shib_block = ShibBlock->new() ;
+    @blocked_list = $shib_block->getBlocked() ;
 }
 
 # need to add in log4perl
@@ -95,7 +98,7 @@ my $ip_switchers_h = $dbh->prepare( $ip_switchers_q ) ;
 $ip_switchers_h->execute() ;
 
 my %targetedIDs = () ;
-
+my %sentencedIDs = () ;
 
 print "\nSession\tCount\n" ;
 while(my $row = $ip_switchers_h->fetchrow_hashref() ) {
@@ -105,11 +108,10 @@ while(my $row = $ip_switchers_h->fetchrow_hashref() ) {
     $targetedIDs{ $row->{hashedid} } = 1 ;
 
     if( $killmode && $row->{count_ips} >= $ip_change_kill_threshold ) {
-        kill_and_block( $dbh, $row->{hashedid} ) ;
+        $sentencedIDs{ $row->{hashedid} } = 1 ;
     }
-
-    
 }
+
 
 if( $detailed ) {
 
@@ -117,10 +119,18 @@ if( $detailed ) {
 }
 
 
+if( $killmode ) {
+    kill_and_block($dbh,  keys %sentencedIDs ) ;
+}
+
+    
+
+
+# make this operate on list easier?
 sub kill_and_block {
 
     my $dbh = shift ;
-    my $hashedid = shift ;
+    my @sentenced = @_ ;
 
     # rough plan
     # 1) rewrite shibuser.txt
@@ -129,31 +139,20 @@ sub kill_and_block {
     # 2) log ips
     #
     # 3) kill all sessions associated with hashedid, log results
-    # 
+    #
     # At some point auto-email folks
-    addBlocked( $hashedid) ;
-    push(@blocked_list, $hashedid ) ;  
-    rewrite_shibuser( @blocked_list ) ;
+    #
+
+    my $shib_block = ShibBlock->new() ;
+    $shib_block->addBlocks( @sentenced ) ;
+    $shib_block->rewrite_shibuser() ;
+
+#print strftime("%Y-%m-%d %H:%M:%S\n", localtime(time));
+    
+    #push(@blocked_list, $hashedid ) ;  
+    #rewrite_shibuser( @blocked_list ) ;
 }
 
-sub rewrite_shibuser {
-
-    my @blocked_hashes = @_ ;
-    
-    my $template = Text::Template->new(TYPE => 'FILE',
-                                       SOURCE => 'shibuser.txt.tmpl');
-    
-    my $text = $template->fill_in(HASH => { 'hashedids' => @blocked_hashes } ) ;
-
-
-    if(-e 'shibuser.txt' ) {
-        copy('shibuser.txt','shibuser.txt.bk') or warn("Couldn't back up shibuser.txt");
-    }
-    open my $shibuser_f, '>', 'shibuser.txt' or die "Could not open shibuser.txt" ;
-    print $shibuser_f $text ;
-    close $shibuser_f ;
-    
-}
 
 sub detailed_report {
     my $dbh = shift ;
@@ -193,36 +192,3 @@ sub statsDbConnection {
 }
 
 
-sub getBlocked {
-
-    # refactor, config object or something
-    my $blocked_filename = "blocked.txt" ;
-
-    
-    my @blocked_ids = () ;
-    
-    if( -e $blocked_filename ) {
-        open my $blocked_f, '<' , $blocked_filename or warn(" Something went wrong accessing $blocked_filename, will use empty list of already blocked hashes " ) ;
-
-        while( my $blocked_hashedid = <$blocked_f>) {
-            chomp( $blocked_hashedid ) ;
-            push(@blocked_ids, $blocked_hashedid ) ;
-        }
-        close $blocked_f ;
-    }
-
-    return @blocked_ids ;
-}
-
-sub addBlocked {
-    # refactor, config object or something
-    my $blocked_filename = "blocked.txt" ;
-
-
-    my $blocked = shift ;
-    open my $blocked_f, '>>', $blocked_filename or warn "Couldn't add to $blocked_filename\n " ;
-
-    print $blocked_f $blocked ."\n" ;
-
-    close $blocked_f ;
-}

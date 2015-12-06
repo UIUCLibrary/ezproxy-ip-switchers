@@ -23,23 +23,28 @@ my @expected_block = ('alicealicealice',
 
 is_deeply(\@sorted_blocked, \@expected_block, "Reading from block list" ) ;
 
-#
-#my @new_blocks = qw(zia2341 barcka) ;#
-#
-#@sorted_blocked = sort $shib_block->getBlocked() ;#
-#
-#@expected_block = ('alicealicealice',
-#                   'alqksdjflaskj141?=\asldf=',
-#                   'barcka',
-#                   'bobbobbob',
-#                   'zia') ;
-#
-#is_deeply(\@sorted_blocked, \@expected_block, "added to  block list" ) ;
-##
-#
-#$shib_block->addBlocks( @new_blocks ) ;
 
-unlink( 'block.txt' ) ;
+my @new_blocks = qw(zia2341 barcka) ;#@sorted_blocked = sort $shib_block->getBlocked() ;#
+
+$shib_block->addBlocks( @new_blocks ) ;
+
+@sorted_blocked = sort $shib_block->getBlocked() ;
+
+
+@expected_block = ('alicealicealice',
+                   'alqksdjflaskj141?=\asldf=',
+                   'barcka',
+                   'bobbobbob',
+                   'zia2341') ;
+
+is_deeply(\@sorted_blocked, \@expected_block, "added to  block list" ) ;
+
+
+$shib_block->rewrite_shibuser() ;
+
+
+
+unlink( $blocked_file_path ) ;
 
 done_testing() ;
 

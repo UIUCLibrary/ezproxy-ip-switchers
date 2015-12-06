@@ -11,7 +11,7 @@ use warnings ;
 use Text::Template ;
 use File::Copy ;
 
-
+use List::MoreUtils qw(uniq);
 
 sub new {
     my $class = shift;
@@ -32,8 +32,8 @@ sub rewrite_shibuser {
     my $self = shift ;
     my $filename = 'shibuser.txt' ;
        
-        my @blocked_hashes = $self->getBlocked() ;
-
+    my @blocked_hashes = $self->getBlocked() ;
+    
     
     my $template = Text::Template->new(TYPE => 'FILE',
                                        SOURCE => 'shibuser.txt.tmpl');
@@ -70,17 +70,37 @@ sub getBlocked {
         close $blocked_f ;
     }
 
-    return @blocked_ids ;
+    return $self->_cleanBlockList( @blocked_ids );
 }
+
+
+# probably shoudl do some dedup and the like on both the way in and the way out...
 
 sub addBlocks {
     my $self = shift ;
 
+    # could use grep too later..
+    my @prev_blocked = $self->getBlocked() ;
+    
     my @blocked = @_ ;
+
+    @blocked = $self->_cleanBlockList( @blocked ) ;
+    
     open my $blocked_f, '>>', $self->{blocked_filename} or warn "Couldn't add to $self->{blocked_filename}\n " ;
     foreach my $blocked_hashid (@blocked) {
-        print $blocked_f $blocked_hashid ."\n" ;
+        if( ! ( grep {$blocked_hashid eq $_ } @prev_blocked ) ) { 
+            print $blocked_f $blocked_hashid ."\n" ;
+        }
     }
     close $blocked_f ;
+}
+
+sub _cleanBlockList {
+    my $self = shift ;
+
+    my @blocks = @_ ;
+    return grep { !( $_ eq '-') }
+           grep { !( $_ =~ /^\s*$/ ) }
+           uniq @blocks ;
 }
 1;
