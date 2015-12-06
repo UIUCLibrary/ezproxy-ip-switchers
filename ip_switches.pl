@@ -132,6 +132,10 @@ sub kill_and_block {
     my $dbh = shift ;
     my @sentenced = @_ ;
 
+    my $log_path = 'ip_switches.log' ;
+    open my $log_fh, '>>', $log_path or warn("Can't log to $log_path") ; 
+ 
+    
     # rough plan
     # 1) rewrite shibuser.txt
     #    from template + blocked list + hashedid
@@ -142,15 +146,50 @@ sub kill_and_block {
     #
     # At some point auto-email folks
     #
-
     my $shib_block = ShibBlock->new() ;
-    $shib_block->addBlocks( @sentenced ) ;
-    $shib_block->rewrite_shibuser() ;
 
-#print strftime("%Y-%m-%d %H:%M:%S\n", localtime(time));
-    
-    #push(@blocked_list, $hashedid ) ;  
-    #rewrite_shibuser( @blocked_list ) ;
+    my %prev_sentenced = map
+                        { $_ => 1 }
+                        ($shib_block->getBlocked()) ;
+        
+    my @new_sentenced = grep { !($prev_sentenced{ $_ }) } @sentenced ;
+
+    if (@new_sentenced ) {
+        # need to add log4per
+        my $log_path = 'blocks.log' ;
+        print $log_fh  strftime("%Y-%m-%d %H:%M:%S", localtime(time))
+                      . " adding blocks " .  join(q{,},@new_sentenced) ;
+        
+        
+        $shib_block->addBlocks( @new_sentenced ) ;
+        $shib_block->rewrite_shibuser() ;
+    }
+
+    # now for good measure, nuke any session from blocked sessions, even old ones
+
+    my $session_ids_q =<<"EOQ";
+select distinct session from session_ips where hashedid = ?
+EOQ
+    my $session_ids_h = $dbh->prepare( $session_ids_q );
+    HAHSEDID: foreach my $hash ( $shib_block->getBlocked() ) {
+        $session_ids_h->execute( $hash );
+        SESSION: while( my $session_info = $session_ids_h->fetchrow_hashref() ) {
+              my $session_id = $session_info->{session} ;
+              if($session_id eq '-' || $session_id =~ /^\s*$/
+                     || $hash eq '-' || $hash =~ /^\s$$/ ) {
+                  next SESSION ;
+              }
+              my $cmd = "./ezproxy kill $session_id" ; 
+              print  $cmd . "\n " ;
+              my $kill_result = `$cmd`;
+              print $kill_result . "\n" ;
+              print $log_fh  strftime("%Y-%m-%d %H:%M:%S", localtime(time))
+                          . "Killing $session_id for $hash, result was "
+                          . $kill_result . "\n" ;
+        }
+    }
+    close $log_fh ;
+ 
 }
 
 
