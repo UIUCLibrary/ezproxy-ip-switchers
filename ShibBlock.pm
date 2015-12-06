@@ -29,20 +29,23 @@ sub new {
 
 sub rewrite_shibuser {
 
+    my $self = shift ;
+    my $filename = 'shibuser.txt' ;
+       
+        my @blocked_hashes = $self->getBlocked() ;
 
-      
-    my @blocked_hashes = @_ ;
     
     my $template = Text::Template->new(TYPE => 'FILE',
                                        SOURCE => 'shibuser.txt.tmpl');
-    
-    my $text = $template->fill_in(HASH => { 'hashedids' => \@blocked_hashes } ) ;
 
+    use Data::Dumper ;
 
-    if(-e 'shibuser.txt' ) {
-        copy('shibuser.txt','shibuser.txt.bk') or warn("Couldn't back up shibuser.txt");
+    my $vars = { hashedids => \@blocked_hashes };
+    my $text = $template->fill_in(HASH => $vars ) ;
+    if(-e $filename) {
+        copy($filename,$filename . '.bk' ) or warn("Couldn't back up $filename");
     }
-    open my $shibuser_f, '>', 'shibuser.txt' or die "Could not open shibuser.txt" ;
+    open my $shibuser_f, '>', $filename or die "Could not open $filename" ;
     print $shibuser_f $text ;
     close $shibuser_f ;
     
@@ -51,7 +54,7 @@ sub rewrite_shibuser {
 
 sub getBlocked {
     my $self = shift ;
-    
+
     # refactor, config object or something
 
     
@@ -70,7 +73,7 @@ sub getBlocked {
     return @blocked_ids ;
 }
 
-sub addBlocked {
+sub addBlocks {
     my $self = shift ;
 
     my @blocked = @_ ;
