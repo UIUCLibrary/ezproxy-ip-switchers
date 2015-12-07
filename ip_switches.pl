@@ -179,7 +179,7 @@ EOQ
                      || $hash eq '-' || $hash =~ /^\s$$/ ) {
                   next SESSION ;
               }
-              my $cmd = "./ezproxy kill $session_id" ; 
+              my $cmd = "../ezproxy kill $session_id" ; 
               print  $cmd . "\n " ;
               my $kill_result = `$cmd`;
               print $kill_result . "\n" ;
@@ -200,7 +200,7 @@ sub detailed_report {
     my $get_ips_q =<<"EOQ";
 select distinct ip
 from session_ips
-where session = ?
+where hashedid = ?
 order by ip
 EOQ
 
