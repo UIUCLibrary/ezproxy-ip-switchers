@@ -46,11 +46,11 @@ You'll want to then edit the shibuser.txt.tmpl file to replace the auth:eduPerso
 ```
 
 We've used this during a period where attackers were cycling a lot of accounts by keeping a terminal open w/ this as a watch 
-`watch -n 600 'perl ip_switches.pl ../ezproxy.log'`
+`watch -n 600 './ip_switches.pl ../ezproxy.log'`
 
 ### Detailed Report
 ```
-../ip_switches.pl --detailed ../ezproxy.log
+./ip_switches.pl --detailed ../ezproxy.log
 ```
 
 The detailed dump will also include the ip addresses associated with each account, mainly to help in log analysis of other systems.
