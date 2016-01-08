@@ -1,0 +1,12 @@
+{ foreach $hashedid (@hashedids) {
+    $OUT .=<<"EOB";
+If auth:eduPersonTargetedID eq "$hashedid";
+   Deny abuse.html
+EOB
+   }    
+}
+# paste in the contents of your current
+# shibuser.txt file below
+#
+# then rename this file to shibuser.txt.tmpl
+
